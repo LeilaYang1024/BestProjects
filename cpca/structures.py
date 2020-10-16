@@ -7,7 +7,6 @@ C = 1
 A = 2
 S = 3
 
-
 class AddrMap(defaultdict):
     """封装 '地名' -> [[相关地址列表], 地名全名]   这种映射结构"""
 
@@ -66,6 +65,5 @@ class Pca(object):
             result["市_pos"] = self.city_pos
             result["区_pos"] = self.area_pos
             result["街_pos"] = self.street_pos
-
         return result
 

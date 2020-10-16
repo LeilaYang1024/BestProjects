@@ -10,25 +10,6 @@ import os
 import cv2
 from PIL import Image
 
-
-def unlock_mv(sp):
-    """ 将视频转换成图片
-        sp: 视频路径 """
-    cap = cv2.VideoCapture(sp)
-    suc = cap.isOpened()  # 是否成功打开
-    frame_count = 0
-    while suc:
-        frame_count += 1
-        suc, frame = cap.read() #按帧读取视频
-        params = []
-        params.append(2)  # params.append(1)
-        cv2.imwrite('mv\\%d.jpg' % frame_count, frame, params)
-
-    cap.release()
-    print('unlock image: ', frame_count)
-
-
-
 def P2V(sp,fps,img_path):
     """
     图集转换成视频
@@ -54,7 +35,7 @@ def P2V(sp,fps,img_path):
 
 def V2P(sp,img_path):
     """
-
+    视频转换成图集
     :param sp: 视频路径
     :param img_path: 生成图片存储文件夹路径
     :return:
