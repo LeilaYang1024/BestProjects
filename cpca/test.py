@@ -8,7 +8,7 @@ Created on:
 """
 import cpca
 
-ad=['北京市海淀区信息路甲28号C座(二层)02B室-405']
+ad=['吉林省四平市铁西区平西乡致富村303国道北侧']
 
 normal=cpca.transform(ad,pos_sensitive=True)
 print(normal)
