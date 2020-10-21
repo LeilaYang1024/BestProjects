@@ -9,6 +9,9 @@ Created on:
 import os
 import cv2
 from PIL import Image
+import os,sys,types
+import numpy as np
+from ImageSimi import similar
 
 def P2V(sp,fps,img_path):
     """
@@ -40,6 +43,10 @@ def V2P(sp,img_path):
     :param img_path: 生成图片存储文件夹路径
     :return:
     """
+    if os.path.exists(img_path):
+        import shutil
+        shutil.rmtree(img_path)
+    os.makedirs(img_path)
     cap = cv2.VideoCapture(sp) #参数是0，表示打开笔记本的内置摄像头，参数是视频文件路径则打开视频
     suc = cap.isOpened()  # 是否成功打开
     frame_count = 0
@@ -51,8 +58,31 @@ def V2P(sp,img_path):
     cap.release()
     print('unlock image: ', frame_count-1)
 
+def moveSimi(path):
+    """
+    去除生成的重复帧
+    :param path:
+    :return:
+    """
+    os.chdir(path)
+    os.makedirs('./rs')
+    for i in range(len(os.listdir('./'))):
+        f1=f'{i+1}.png'
+        f2=f'{i+2}.png'
+        try:
+            a = Image.open(f1)
+            b = Image.open(f2)
+            s = similar(a, b)
+            if s<=0.7:
+                os.rename(f'{f2}',f'./rs/{f2}')
+        except Exception as e:
+            print(e.args)
+
+
+
 
 if __name__ == '__main__':
-    sp = 'a.avi'
+    sp = 'b.mp4'
     img_path='mv'
     V2P(sp,img_path)
+    moveSimi('mv')

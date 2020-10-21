@@ -40,8 +40,11 @@ def _data_from_csv() -> (dict, AddrMap, AddrMap,AddrMap,AddrMap,AddrMap, dict):
     # 街道及其简写(去掉‘街道’,遇其他清洗情况增加map) -> 相关pca元组
     street_map = AddrMap()
 
-    # (省名全称, 街道名全称) -> 相关pca元组
+    # (省名全称, 区县名全称) -> 相关pca元组
     province_area_map = AddrMap()
+
+    # (市全称, 街道名全称) -> 相关pca元组
+    city_street_map = AddrMap()
 
     # (省名全称, 街道名全称) -> 相关pca元组
     province_street_map = AddrMap()
@@ -67,8 +70,10 @@ def _data_from_csv() -> (dict, AddrMap, AddrMap,AddrMap,AddrMap,AddrMap, dict):
             _fill_street_map(street_map,record_dict)
             _fill_province_area_map(province_area_map, record_dict)
             _fill_province_street_map(province_street_map,record_dict)
+            _fill_city_street_map(city_street_map,record_dict)
 
-    return province_map,city_map,area_map,street_map,province_area_map,province_street_map,latlng
+
+    return province_map,city_map,area_map,street_map,province_area_map,province_street_map,city_street_map,latlng
 
 
 
@@ -77,6 +82,12 @@ def _fill_province_street_map(province_street_map: AddrMap, record_dict):
     key = (record_dict['sheng'], record_dict['jie'])
     if key not in province_street_map.keys() and key[1]!='':
         province_street_map.append_relational_addr(key, pca_tuple, P)
+
+def _fill_city_street_map(city_street_map: AddrMap, record_dict):
+    pca_tuple = (record_dict['sheng'], record_dict['shi'], record_dict['qu'],record_dict['jie'])
+    key = (record_dict['shi'], record_dict['jie'])
+    if key not in city_street_map.keys() and key[1]!='':
+        city_street_map.append_relational_addr(key, pca_tuple, P)
 
 def _fill_province_area_map(province_area_map: AddrMap, record_dict):
     pca_tuple = (record_dict['sheng'], record_dict['shi'], record_dict['qu'],record_dict['jie'])
@@ -90,14 +101,8 @@ def _fill_street_map(street_map: AddrMap, record_dict):
     if street_name not in street_map.keys() and street_name!='':
         street_map.append_relational_addr(street_name, pca_tuple, S)
         # 处理镇/乡/路/街道简写情况
-        if street_name.endswith('街道'):
+        if street_name.endswith('街道') and len(street_name)>=4:
             street_map.append_relational_addr(street_name[:-2], pca_tuple, A)
-        if street_name.endswith('镇') and len(street_name)>2:
-            street_map.append_relational_addr(street_name[:-1], pca_tuple, A)
-        if street_name.endswith('乡') and len(street_name)>2:
-            street_map.append_relational_addr(street_name[:-1], pca_tuple, A)
-        if street_name.endswith('路') and len(street_name)>2:
-            street_map.append_relational_addr(street_name[:-1], pca_tuple, A)
 
 
 def _fill_area_map(area_map: AddrMap, record_dict):
@@ -108,14 +113,7 @@ def _fill_area_map(area_map: AddrMap, record_dict):
         # 处理市/区/县/乡/镇简写情况
         if area_name.endswith('市') and len(area_name)>2:
             area_map.append_relational_addr(area_name[:-1], pca_tuple, A)
-        elif area_name.endswith('区')and len(area_name)>2:
-            area_map.append_relational_addr(area_name[:-1], pca_tuple, A)
-        elif area_name.endswith('县') and len(area_name)>2:
-            area_map.append_relational_addr(area_name[:-1], pca_tuple, A)
-        elif area_name.endswith('乡')and len(area_name)>2:
-            area_map.append_relational_addr(area_name[:-1], pca_tuple, A)
-        elif area_name.endswith('镇')and len(area_name)>2:
-            area_map.append_relational_addr(area_name[:-1], pca_tuple, A)
+
 
 def _fill_city_map(city_map: AddrMap, record_dict):
     city_name = record_dict['shi']
@@ -123,8 +121,6 @@ def _fill_city_map(city_map: AddrMap, record_dict):
     city_map.append_relational_addr(city_name, pca_tuple, C)
     # 处理市/县/地区的简写情况
     if city_name.endswith('市'):
-        city_map.append_relational_addr(city_name[:-1], pca_tuple, C)
-    elif city_name.endswith('县'):
         city_map.append_relational_addr(city_name[:-1], pca_tuple, C)
     elif city_name.endswith('地区'):
         city_map.append_relational_addr(city_name[:-2], pca_tuple, C)
@@ -236,7 +232,7 @@ def _fill_province_map(province_map, record_dict):
         elif sheng == '澳门特别行政区':
             province_map['澳门'] = sheng
 
-province_map,city_map,area_map,street_map,province_area_map,province_street_map,latlng = _data_from_csv()
+province_map,city_map,area_map,street_map,province_area_map,province_street_map,city_street_map,latlng = _data_from_csv()
 
 
 
@@ -309,11 +305,12 @@ def _handle_one_record(addr, umap, lookahead, pos_sensitive, open_warning):
 
 
     #缺失省/市/区填充，多个依据优先级高于单个依据
+
+
     _fill_area(pca,umap,open_warning)
-
     _fill_city(pca, umap, open_warning)
-
     _fill_province(pca)
+
 
     result = pca.propertys_dict(pos_sensitive)
     result["地址"] = addr
@@ -339,14 +336,18 @@ def _fill_area(pca, umap, open_warning):
     :param open_warning:
     :return:
     """
-
     if not pca.area:
-
         # 优先从 省,街道 映射
         if pca.street and pca.province:
             newKey = (pca.province, pca.street)
             if newKey in province_street_map and province_street_map.is_unique_value(newKey):
                 pca.area = province_street_map.get_value(newKey, A)
+                return
+
+        if pca.street and pca.city:
+            newKey = (pca.city, pca.street)
+            if newKey in city_street_map and city_street_map.is_unique_value(newKey):
+                pca.area = city_street_map.get_value(newKey, A)
                 return
 
         # 从 街道 映射
@@ -361,7 +362,7 @@ def _fill_area(pca, umap, open_warning):
 
         if open_warning:
             import logging
-            logging.warning("%s 无法映射, 建议添加进umap中", pca.street)
+            logging.warning("fillarea:%s 无法映射, 建议添加进umap中", pca.street)
 
 
 def _fill_city(pca, umap, open_warning):
@@ -393,7 +394,7 @@ def _fill_city(pca, umap, open_warning):
 
         if open_warning:
             import logging
-            logging.warning("%s 无法映射, 建议添加进umap中", pca.area)
+            logging.warning("fillcity:%s 无法映射, 建议添加进umap中", pca.area)
 
 
 def _full_text_extract(addr, lookahead):
@@ -438,7 +439,6 @@ def _full_text_extract(addr, lookahead):
             if i + length > len(addr):
                 break
             word = addr[i:i + length]
-
 
             if word in province_map:
                 defer_fun = _set_pca('province', i, word, province_map.get(word))
